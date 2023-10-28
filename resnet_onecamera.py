@@ -13,40 +13,26 @@ class model_cnn(nn.Module):
     * @param None.
     * @return None.
     """
-    def __init__(self):
+    def __init__(self, input_size=1, hidden_size=64, num_layers=2, output_size=24):
         super().__init__()
+        # resnet50 part for image processing
+        model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
+        model.fc = nn.Sequential(nn.Linear(in_features=2048, out_features=24), nn.Tanh())
+        self.resnet = model
+        # fc part for xy coordinates processing
+        self.fc01 = nn.Linear(2, 24)
+        # fc part for combining image part and xy part
+        self.fc02
+        # lstm part
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
 
-        self.elu = nn.ELU()
-        self.dropout = nn.Dropout()
-
-        self.conv_0 = nn.Conv2d(3, 24, 5, stride=2)
-        self.conv_1 = nn.Conv2d(24, 36, kernel_size=5, stride=2)
-        self.conv_2 = nn.Conv2d(36, 48, kernel_size=5, stride=2) #384 kernels, size 3x3
-        self.conv_3 = nn.Conv2d(48, 64, kernel_size=3) # 384 kernels size 3x3
-        self.conv_4 = nn.Conv2d(64, 64, kernel_size=3) # 256 kernels, size 3x3
-
-        self.fc0 = nn.Linear(1152, 100)
-        self.fc1 = nn.Linear(100,50)
-        self.fc2 = nn.Linear(50, 10)
-        self.fc3 = nn.Linear(10, 1)
-    """ 
-    * @brief Function to build the model.
-    * @parma The image to train.
-    * @return The trained prediction network.
-    """
-    def forward(self, input):
-        input = input/127.5-1.0
-        input = self.elu(self.conv_0(input))
-        input = self.elu(self.conv_1(input))
-        input = self.elu(self.conv_2(input))
-        input = self.elu(self.conv_3(input))
-        input = self.elu(self.conv_4(input))
-        input = self.dropout(input)
-
-        input = input.flatten()
-        input = self.elu(self.fc0(input))
-        input = self.elu(self.fc1(input))
-        input = self.elu(self.fc2(input))
-        input = self.fc3(input)
+    def forward(self, input_img, input_xy):
+        x1 = self.resnet(input_img[0])
+        x2 = self.resnet(input_img[1])
+        x3 = self.resnet(input_img[2])
+        x4 = self.resnet(input_img[3])
 
         return input
