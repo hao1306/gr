@@ -26,7 +26,7 @@ INPUT_SHAPE = (IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS)
 
 class LetterBox:
     # YOLOv5 LetterBox class for image preprocessing, i.e. T.Compose([LetterBox(size), ToTensor()])
-    def __init__(self, size=(224, 224), auto=False, stride=32):
+    def __init__(self, size, auto=False, stride=32):
         super().__init__()
         self.h, self.w = (size, size) if isinstance(size, int) else size
         self.auto = auto  # pass max size integer, automatically solve for short side using stride
@@ -71,8 +71,10 @@ def crop(image):
 
 
 def resize(image):
-    letterbox = LetterBox(size=(224, 224))
+    letterbox = LetterBox(size=(1600, 900))
+    
     output = letterbox(image)
+    #print(output.shape)
     return output
 
 
@@ -95,53 +97,25 @@ def rgb2yuv(image):
 
 
 def preprocess(image):
-    image = crop(image)
-    image = resize(image)
+    # image = crop(image)
+    # image = resize(image)
+    image = cv2.resize(image, (450, 800))
+    image = random_brightness(image)
+    image = random_shadow(image)
     image = rgb2yuv(image)
     image = cv2.GaussianBlur(image, (3, 3), 0)
     return image
 
 
-def preprocess_drive(image):
-    image = crop(image)
-    image = resize(image)
+def preprocess_all(image):
+    # image = crop(image)
+    # image = cv2.resize(image(450, 800))
+    image = random_brightness(image)
+    image = random_shadow(image)
     image = rgb2yuv(image)
+    image = cv2.GaussianBlur(image, (3, 3), 0)
     return image
 
-
-"""
-* @brief Function to randomly choose the center, left and right images 
-* to adjust the steering angles.
-* @param Steering angles that corresponds to the images.
-* @return The new adjusted steering angles.
-"""
-
-
-def choose_image(steering_angle):
-    if np.random.rand() < 0.8:
-        choice = np.random.choice(2)
-        if choice == 0:
-            return "img_left_pth", float(steering_angle) + 0.25
-        elif choice == 1:
-            return "img_right_pth", float(steering_angle) - 0.25
-    else:
-        return "img_center_pth", float(steering_angle)
-
-    # choice = np.random.choice(3)
-    # if choice == 0:
-    #     return "img_left_pth", float(steering_angle) + 0.25
-    # elif choice == 1:
-    #     return "img_right_pth", float(steering_angle) - 0.25
-    # return "img_center_pth", float(steering_angle)
-
-
-"""
-* @brief Function to randomly flip the left and right images and adjust
-* the steering angles.
-* @param The images from the left or right dataset.
-* @param The steering angle of the corresponding images.
-* @return the flipped images and their corresponding steering angles.
-"""
 
 
 def random_flip(image, steering_angle):
@@ -150,25 +124,6 @@ def random_flip(image, steering_angle):
         steering_angle = -steering_angle
     return image, steering_angle
 
-
-"""
-* @brief Fuinction to randomly translate the image vertically and horizontally.
-* @param The image to translate.
-* @param The steering angle of the selected image.
-* @param Range of x translation.
-* @param Range of y translation.
-* @return The image and its corresponding steering angle
-"""
-
-
-def random_translate(image, steering_angle, range_x, range_y):
-    trans_x = range_x * (np.random.rand() - 0.5)
-    trans_y = range_y * (np.random.rand() - 0.5)
-    steering_angle += trans_x * 0.002
-    trans_m = np.float32([[1, 0, trans_x], [0, 1, trans_y]])
-    height, width = image.shape[:2]
-    image = cv2.warpAffine(image, trans_m, (width, height))
-    return image, steering_angle
 
 
 """
@@ -211,55 +166,3 @@ def random_brightness(image):
     ratio = 1.0 + 0.4 * (np.random.rand() - 0.5)
     hsv[:, :, 2] = hsv[:, :, 2] * ratio
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-
-
-"""
-* @brief Function to augment the image and trhe steering angle of the center image
-* @param The data directory containing thje images.
-* @param The center, left and right images and their corresponding steering angles.
-* @param The x and y range of the image augmentation allowd(set to a default value
-* unless specified on execution)
-* @return Returns the output from all image augmentation process.
-"""
-
-
-def augument(data_dir, center, left, right, steering_angle, range_x=100, range_y=10):
-    image, steering_angle = choose_image(data_dir, center, left, right, steering_angle)
-    image, steering_angle = random_flip(image, steering_angle)
-    image, steering_angle = random_translate(image, steering_angle, range_x, range_y)
-    image = random_shadow(image)
-    image = random_brightness(image)
-    return image, steering_angle
-
-
-"""
-* @brief Function to Generate training image give image paths and associated steering angles
-* @param The directory path where the data is stored.
-* @param The image paths for each image.
-* @param The steering angles for the images.
-* @param The variable containing the size of the required batch size.
-* @param Binary value of the status of the training process.
-* @return The images and steering angles.
-"""
-
-
-def batch_generator(data_dir, image_paths, steering_angles, batch_size, is_training):
-    images = np.empty([batch_size, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS])
-    steers = np.empty(batch_size)
-    while True:
-        i = 0
-        for index in np.random.permutation(image_paths.shape[0]):
-            center, left, right = image_paths[index]
-            steering_angle = steering_angles[index]
-            # argumentation
-            if is_training and np.random.rand() < 0.6:
-                image, steering_angle = augument(data_dir, center, left, right, steering_angle)
-            else:
-                image = load_image(data_dir, center)
-            # add the image and steering angle to the batch
-            images[i] = preprocess(image)
-            steers[i] = steering_angle
-            i += 1
-            if i == batch_size:
-                break
-        yield images, steers
