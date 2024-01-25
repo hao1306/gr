@@ -120,6 +120,8 @@ def train_val(cfg, load_model, device0):
 
         val_losses.append(val_loss)
 
+        print(f'The val loss of epoch {epoch_i} is :', val_loss)
+
         save_path = cfg.save_path + '/' + str(epoch_i) + '.pt'
         torch.save(model, save_path)
         torch.cuda.empty_cache()
@@ -149,7 +151,7 @@ def train_val(cfg, load_model, device0):
 
 def parse_cfg():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, default=1, help='total number of training epochs')
+    parser.add_argument('--epochs', type=int, default=2, help='total number of training epochs')
     parser.add_argument('--epoch_test', type=int, default=20, help='total number of testing epochs')
     
     parser.add_argument('--device', type=str, default='0', help='e.g. cpu or 0 or 0,1,2,3')
