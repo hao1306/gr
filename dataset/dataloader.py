@@ -132,10 +132,12 @@ class ResNetDataset(Dataset):
                     coordinate_label[i - cfg.input_n, 0] = float(x)
                     coordinate_label[i - cfg.input_n, 1] = float(y)
 
-            coordinate_input[:, 0] = coordinate_input[:, 0] - coordinate_input[3, 0]
-            coordinate_input[:, 1] = coordinate_input[:, 1] - coordinate_input[3, 1]
-            coordinate_label[:, 0] = coordinate_label[:, 0] - coordinate_input[3, 0]
-            coordinate_label[:, 1] = coordinate_label[:, 0] - coordinate_input[3, 1]
+            minus_a = coordinate_input[3, 0]
+            minus_b = coordinate_input[3, 1]
+            coordinate_input[:, 0] = coordinate_input[:, 0] - minus_a
+            coordinate_input[:, 1] = coordinate_input[:, 1] - minus_b
+            coordinate_label[:, 0] = coordinate_label[:, 0] - minus_a
+            coordinate_label[:, 1] = coordinate_label[:, 1] - minus_b
             # coordinate_input = np.resize(coordinate_input, (cfg.input_n * 2))
             # coordinate_label = np.resize(coordinate_label, (cfg.predict_n * 2))
 
@@ -170,10 +172,13 @@ class ResNetDataset(Dataset):
                         coordinate_label[t - cfg.input_n, 0] = float(x)
                         coordinate_label[t - cfg.input_n, 1] = float(y)
 
-            coordinate_input[:, 0] = coordinate_input[:, 0] - coordinate_input[3, 0]
-            coordinate_input[:, 1] = coordinate_input[:, 1] - coordinate_input[3, 1]
-            coordinate_label[:, 0] = coordinate_label[:, 0] - coordinate_input[3, 0]
-            coordinate_label[:, 1] = coordinate_label[:, 0] - coordinate_input[3, 1]
+            # print('before minus', coordinate_label)
+            minus_a = coordinate_input[3, 0]
+            minus_b = coordinate_input[3, 1]
+            coordinate_input[:, 0] = coordinate_input[:, 0] - minus_a
+            coordinate_input[:, 1] = coordinate_input[:, 1] - minus_b
+            coordinate_label[:, 0] = coordinate_label[:, 0] - minus_a
+            coordinate_label[:, 1] = coordinate_label[:, 1] - minus_b
             # coordinate_input = np.resize(coordinate_input, (cfg.input_n * 2))
             # coordinate_label = np.resize(coordinate_label, (cfg.predict_n * 2))
             xy_in = torch.from_numpy(np.array(coordinate_input).astype(np.float32))
@@ -219,8 +224,11 @@ if __name__=='__main__':
     cfg = parse_cfg()
     train_data = ResNetDataset(cfg, phase='val')
     train_dataloader = DataLoader(train_data, batch_size=16, shuffle=False, num_workers=0, pin_memory=True)
+    i = 0
     for (image, xy_in, target, token) in train_dataloader:
-        print('first', type(image))
-        img = image.numpy()
-        
-        print(target.shape)
+        i += 1
+        # print('xy_in', xy_in)
+        print('target', target)
+
+        if i > 3:
+            break
