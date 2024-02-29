@@ -2,7 +2,8 @@ import sys
 import os
 import argparse
 import torch
-from network.resnet_onecamera import MyNetwork
+# from network.resnet_lstm import MyNetwork
+from network.rnn import MyNetwork
 from torch.utils.data import DataLoader, random_split
 from dataset.dataloader import ResNetDataset
 import utils
@@ -29,6 +30,9 @@ def train_val(cfg, load_model, device0):
                                   pin_memory=True)
     val_dataloader = DataLoader(val_set, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers,
                                 pin_memory=True)
+    
+    # print('len of train', len(train_dataloader))
+    # print('len of val', len(val_dataloader))
 
     # 第2步：构建网络，设置训练参数：学习率、学习率衰减策略、优化函数（SDG、Adam、……）、损失函数、……
 
@@ -38,7 +42,7 @@ def train_val(cfg, load_model, device0):
 
     loss_function = torch.nn.MSELoss()
 
-    scheduler = StepLR(optimizer, step_size=20, gamma=0.9)
+    scheduler = StepLR(optimizer, step_size=3, gamma=0.9)
 
     # 第3步：循环读取数据训练网络
 
@@ -75,6 +79,7 @@ def train_val(cfg, load_model, device0):
 
             # input_new, input_xy, target = input_new.to(device), input_xy.to(device), target.to(device)
             time.sleep(0.00001)
+            # print('shape of xy in', input_xy.size())
             input_img, input_xy, target = input_img.to(device), input_xy.to(device), target.to(device)
 
             optimizer.zero_grad()
@@ -151,14 +156,14 @@ def train_val(cfg, load_model, device0):
 
 def parse_cfg():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, default=2, help='total number of training epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='total number of training epochs')
     parser.add_argument('--epoch_test', type=int, default=20, help='total number of testing epochs')
     
     parser.add_argument('--device', type=str, default='0', help='e.g. cpu or 0 or 0,1,2,3')
     parser.add_argument('--batch-size', type=int, default=4, help='batch size')
     parser.add_argument('--learning-rate', type=int, default=0.001, help='initial learning rate')
     parser.add_argument('--num-workers', type=int, default=0, help='number of workers')
-    parser.add_argument('--save-path', type=str, default='weights/one_camera/try02', help='path to save checkpoint')
+    parser.add_argument('--save-path', type=str, default='weights/one_camera/try04', help='path to save checkpoint')
 
     parser.add_argument('--data-root', type=str, default='dataset/nuscenes/trian/', help='path to save checkpoint')
     parser.add_argument('--data-path', type=str, default='dataset/nuscenes/image_scenes/', help='path to save checkpoint')
@@ -178,8 +183,8 @@ if __name__ == '__main__':
         pass
     else:
         os.mkdir(cfg.save_path)
-    # load_model = torch.load('weights/79.pt')
-    load_model = MyNetwork()
+    load_model = torch.load('weights/one_camera/try03/5.pt')
+    # load_model = MyNetwork()
     # total_params = sum(p.numel() for p in load_model.parameters())
     # print(f"Total parameters: {total_params}")
     # torch.cuda.empty_cache()
