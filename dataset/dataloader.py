@@ -206,7 +206,7 @@ def parse_cfg():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=1, help='total number of training epochs')
     parser.add_argument('--device', type=str, default='0', help='e.g. cpu or 0 or 0,1,2,3')
-    parser.add_argument('--batch-size', type=int, default=2, help='batch size')
+    parser.add_argument('--batch-size', type=int, default=4, help='batch size')
     parser.add_argument('--learning-rate', type=int, default=0.01, help='initial learning rate')
     parser.add_argument('--num-workers', type=int, default=0, help='number of workers')
 
@@ -227,8 +227,8 @@ if __name__=='__main__':
     i = 0
     for (image, xy_in, target, token) in train_dataloader:
         i += 1
-        # print('xy_in', xy_in)
-        print('target', target)
+        print('img', image.size())
+        print('target', xy_in.size())
 
-        if i > 3:
+        if i > 2:
             break
