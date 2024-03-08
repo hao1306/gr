@@ -1,11 +1,5 @@
-"""
-  *  @copyright (c) 2020 Charan Karthikeyan P V, Nagireddi Jagadesh Nischal
-  *  @file    utils.py
-  *  @author  Charan Karthikeyan P V, Nagireddi Jagadesh Nischal
-  *
-  *  @brief Supplemetary file to run the train file containing the functions to
-  *   augment and preprocess the images and steering angles.
- """
+from pyquaternion import Quaternion
+from typing import Dict, Tuple, Any, List, Callable, Union
 import cv2
 import os
 import numpy as np
@@ -16,13 +10,81 @@ import math
 IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS = 224, 224, 3
 INPUT_SHAPE = (IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_CHANNELS)
 
-"""
-* @brief Function to load the images from the path 
-* @param data direcrtory 
-* @param File path of the images
-* @return The image file
-"""
+def quaternion_yaw(q: Quaternion) -> float:
+    """
+    Calculate the yaw angle from a quaternion.
+    Note that this only works for a quaternion that represents a box in lidar or global coordinate frame.
+    It does not work for a box in the camera frame.
+    :param q: Quaternion of interest.
+    :return: Yaw angle in radians.
+    """
 
+    # Project into xy plane.
+    v = np.dot(q.rotation_matrix, np.array([1, 0, 0]))
+
+    # Measure yaw using arctan.
+    yaw = np.arctan2(v[1], v[0])
+
+    return yaw
+
+
+def angle_of_rotation(yaw: float) -> float:
+    """
+    Given a yaw angle (measured from x axis), find the angle needed to rotate by so that
+    the yaw is aligned with the y axis (pi / 2).
+    :param yaw: Radians. Output of quaternion_yaw function.
+    :return: Angle in radians.
+    """
+    return (np.pi / 2) + np.sign(-yaw) * np.abs(yaw)
+
+
+def make_2d_rotation_matrix(angle_in_radians: float) -> np.ndarray:
+    """
+    Makes rotation matrix to rotate point in x-y plane counterclockwise
+    by angle_in_radians.
+    """
+
+    return np.array([[np.cos(angle_in_radians), -np.sin(angle_in_radians)],
+                     [np.sin(angle_in_radians), np.cos(angle_in_radians)]])
+
+
+def convert_global_coords_to_local(coordinates: np.ndarray,
+                                   translation: Tuple[float, float, float],
+                                   rotation: Tuple[float, float, float, float]) -> np.ndarray:
+    """
+    Converts global coordinates to coordinates in the frame given by the rotation quaternion and
+    centered at the translation vector. The rotation is meant to be a z-axis rotation.
+    :param coordinates: x,y locations. array of shape [n_steps, 2].
+    :param translation: Tuple of (x, y, z) location that is the center of the new frame.
+    :param rotation: Tuple representation of quaternion of new frame.
+        Representation - cos(theta / 2) + (xi + yi + zi)sin(theta / 2).
+    :return: x,y locations in frame stored in array of share [n_times, 2].
+    """
+    yaw = angle_of_rotation(quaternion_yaw(Quaternion(rotation)))
+
+    transform = make_2d_rotation_matrix(angle_in_radians=yaw)
+
+    coords = (coordinates - np.atleast_2d(np.array(translation)[:2])).T
+
+    return np.dot(transform, coords).T[:, :2]
+
+
+def convert_local_coords_to_global(coordinates: np.ndarray,
+                                   translation: Tuple[float, float, float],
+                                   rotation: Tuple[float, float, float, float]) -> np.ndarray:
+    """
+    Converts local coordinates to global coordinates.
+    :param coordinates: x,y locations. array of shape [n_steps, 2]
+    :param translation: Tuple of (x, y, z) location that is the center of the new frame
+    :param rotation: Tuple representation of quaternion of new frame.
+        Representation - cos(theta / 2) + (xi + yi + zi)sin(theta / 2).
+    :return: x,y locations stored in array of share [n_times, 2].
+    """
+    yaw = angle_of_rotation(quaternion_yaw(Quaternion(rotation)))
+
+    transform = make_2d_rotation_matrix(angle_in_radians=-yaw)
+
+    return np.dot(transform, coordinates.T).T[:, :2] + np.atleast_2d(np.array(translation)[:2])
 
 class LetterBox:
     # YOLOv5 LetterBox class for image preprocessing, i.e. T.Compose([LetterBox(size), ToTensor()])
